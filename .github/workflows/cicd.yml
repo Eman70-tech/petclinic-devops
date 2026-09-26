@@ -22,3 +22,5 @@ jobs:
           cache: maven
       - name: Build with Maven Wrapper
         run: ./mvnw -B verify -Dtest=!PostgresIntegrationTests
+      - name: Build Docker Image
+        run: docker build -t spring-petclinic .      
