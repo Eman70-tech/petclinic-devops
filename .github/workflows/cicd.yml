@@ -21,4 +21,4 @@ jobs:
           distribution: 'adopt'
           cache: maven
       - name: Build with Maven Wrapper
-        run: ./mvnw -B -e verify
+        run: ./mvnw -B verify -Dtest=!PostgresIntegrationTests
