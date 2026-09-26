@@ -14,13 +14,24 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - name: set up java 
         uses: actions/setup-java@v4
         with:
           java-version: ${{matrix.java}}
           distribution: 'adopt'
           cache: maven
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
       - name: Build with Maven Wrapper
         run: ./mvnw -B verify -Dtest=!PostgresIntegrationTests
+
       - name: Build Docker Image
-        run: docker build -t spring-petclinic .      
+        run: docker build -t spring-petclinic .
