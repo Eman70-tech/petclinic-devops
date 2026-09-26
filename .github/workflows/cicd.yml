@@ -21,4 +21,4 @@ jobs:
           distribution: 'adopt'
           cache: maven
       - name: Build with Maven Wrapper
-        run: ./mvnw -B verify
+        run: ./mvnw -B -e verify
