@@ -47,7 +47,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-            - name: Get Nexus initial admin password
+      - name: Get Nexus initial admin password
         id: nexus_init_pass
         run: |
           NEXUS_INITIAL_PASS=$(docker exec ${{ job.services.nexus.id }} \
