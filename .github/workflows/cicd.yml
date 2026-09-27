@@ -50,7 +50,7 @@ jobs:
       - name: Log in to Nexus
         uses: docker/login-action@v3
         with:
-          registry: nexus:8081
+          registry: localhost:8081
           username: ${{ secrets.NEXUS_USERNAME }}
           password: ${{ secrets.NEXUS_PASSWORD }}
 
