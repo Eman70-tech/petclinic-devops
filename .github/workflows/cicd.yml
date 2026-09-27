@@ -55,14 +55,16 @@ jobs:
 
           echo "pass=$NEXUS_INITIAL_PASS" >> "$GITHUB_OUTPUT"
 
-      - name: Change Nexus admin password
+      - name: Verify initial Nexus password
         run: |
+          NEXUS_INITIAL_PASS=$(docker exec ${{ job.services.nexus.id }} \
+            cat /nexus-data/admin.password)
+
+          echo "Initial password file exists."
+
           curl -fS \
-            -u "admin:${{ steps.nexus_init_pass.outputs.pass }}" \
-            -X PUT \
-            -H "Content-Type: text/plain" \
-            --data "${{ secrets.NEXUS_PASSWORD }}" \
-            http://localhost:8081/service/rest/v1/security/users/admin/change-password
+            -u "admin:${NEXUS_INITIAL_PASS}" \
+            http://localhost:8081/service/rest/v1/status
 
       - name: Verify Nexus admin credentials
         run: |
