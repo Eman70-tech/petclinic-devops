@@ -71,7 +71,7 @@ jobs:
 
       - name: Create Docker hosted repository
         run: |
-          curl -u admin:${{ secrets.NEXUS_PASSWORD }} \
+          curl -fS -u admin:${{ secrets.NEXUS_PASSWORD }} \
             -X POST \
             -H "Content-Type: application/json" \
             --data '{
@@ -91,7 +91,12 @@ jobs:
             }' \
             http://localhost:8081/service/rest/v1/repositories/docker/hosted
 
-
+      - name: Verify Docker repository
+        run: |
+          curl -fS \
+            -u admin:${{ secrets.NEXUS_PASSWORD }} \
+            http://localhost:8081/service/rest/v1/repositories/docker/hosted/spring-petclinic
+            
       - name: Log in to Nexus
         uses: docker/login-action@v3
         with:
