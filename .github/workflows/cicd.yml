@@ -20,12 +20,21 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      sonarqube:
+        image: sonarqube:lts-community
+        ports:
+          - 9000:9000
+        env:
+          SONAR_SEARCH_JAVAADDITIONALOPTS: -Dnode.store.allow_mmap=false
+
     strategy:
       matrix:
         java: [ '17' ]
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: set up java 
         uses: actions/setup-java@v4
@@ -44,6 +53,31 @@ jobs:
 
       - name: Build with Maven Wrapper
         run: ./mvnw -B verify -Dtest=!PostgresIntegrationTests
+      
+      #=============================================================================================================#
+      - name: Wait for SonarQube and create token
+        run: |
+          for i in $(seq 1 60); do
+            STATUS=$(curl -s http://localhost:9000/api/system/status | jq -r '.status' 2>/dev/null || true)
+            [ "$STATUS" = "UP" ] && break
+            sleep 10
+          done
+          [ "$STATUS" = "UP" ] || { echo "SonarQube did not start"; exit 1; }
+
+          TOKEN=$(curl -fS -u admin:admin -X POST \
+            http://localhost:9000/api/user_tokens/generate \
+            -d "name=ci" | jq -r '.token')
+          echo "::add-mask::$TOKEN"
+          echo "SONAR_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
+      - name: SonarQube analysis
+        run: |
+          ./mvnw -B \
+            org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.host.url=http://localhost:9000 \
+            -Dsonar.token="$SONAR_TOKEN" \
+            -Dsonar.projectKey=spring-petclinic
+#================================================================================================================#
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
