@@ -13,6 +13,7 @@ jobs:
         image: sonatype/nexus3:latest
         ports:
           - 8081:8081
+          - 8082:8082
         options: >-
           --health-cmd "curl -f http://localhost:8081 || exit 1"
           --health-interval 10s
@@ -47,6 +48,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # --------------------------------
+      # 6. Get Nexus initial admin password
+      # --------------------------------
       - name: Get Nexus initial admin password
         id: nexus_init_pass
         run: |
@@ -55,12 +59,20 @@ jobs:
 
           echo "pass=$NEXUS_INITIAL_PASS" >> "$GITHUB_OUTPUT"
 
-      - name: Verify Nexus admin credentials
+
+      # --------------------------------
+      # 7. Verify Nexus credentials
+      # --------------------------------
+      - name: Verify Nexus credentials
         run: |
           curl -fS \
             -u "admin:${{ steps.nexus_init_pass.outputs.pass }}" \
             http://localhost:8081/service/rest/v1/status
 
+
+      # --------------------------------
+      # 8. Activate Docker Bearer Token Realm
+      # --------------------------------
       - name: Activate Docker Bearer Token Realm
         run: |
           curl -fS \
@@ -70,6 +82,10 @@ jobs:
             --data '["NexusAuthenticatingRealm","DockerToken"]' \
             http://localhost:8081/service/rest/v1/security/realms/active
 
+
+      # --------------------------------
+      # 9. Create Docker hosted repository
+      # --------------------------------
       - name: Create Docker hosted repository
         run: |
           curl -fS \
@@ -87,18 +103,34 @@ jobs:
               "docker": {
                 "v1Enabled": false,
                 "forceBasicAuth": false,
-                "httpPort": null,
+                "httpPort": 8082,
                 "httpsPort": null
               }
             }' \
             http://localhost:8081/service/rest/v1/repositories/docker/hosted
 
+
+      # --------------------------------
+      # 10. Verify repository
+      # --------------------------------
+      - name: Verify Docker repository
+        run: |
+          curl -fS \
+            -u "admin:${{ steps.nexus_init_pass.outputs.pass }}" \
+            http://localhost:8081/service/rest/v1/repositories/docker/hosted/spring-petclinic
+
+
+      # --------------------------------
+      # 11. Login to Nexus Docker Registry
+      # --------------------------------
       - name: Log in to Nexus
         uses: docker/login-action@v3
         with:
-          registry: localhost:8081
+          registry: localhost:8082
           username: admin
           password: ${{ steps.nexus_init_pass.outputs.pass }}
+
+
 
       - name: Build Docker Image
         uses: docker/build-push-action@v6
