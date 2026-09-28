@@ -110,6 +110,7 @@ jobs:
           tags: |
             spring-petclinic:latest
             localhost:8082/spring-petclinic:latest
+            petclinic-app:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           
@@ -124,13 +125,18 @@ jobs:
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
-
-      - name: Get Nexus admin password
+- name: Get Nexus admin password
         run: |
           NEXUS_CONTAINER=$(docker ps -qf "ancestor=sonatype/nexus3:latest")
-          NEXUS_PASS=$(docker exec "$NEXUS_CONTAINER" cat /nexus-data/admin.password)
+          NEXUS_PASS=$(docker exec "$NEXUS_CONTAINER" cat /nexus-data/admin.password | tr -d '\r\n')
           echo "::add-mask::$NEXUS_PASS"
           echo "NEXUS_PASS=$NEXUS_PASS" >> "$GITHUB_ENV"
+
+      - name: Disable Anonymous Access in Nexus
+        run: |
+          curl -u admin:"$NEXUS_PASS" -X PUT "http://localhost:8081/service/rest/v1/security/anonymous" \
+            -H "Content-Type: application/json" \
+            -d '{"enabled": false, "userId": "anonymous", "realmName": "NexusAuthorizingRealm"}'
 
       - name: Create Docker hosted repository in Nexus
         run: |
@@ -151,10 +157,9 @@ jobs:
 
       - name: Verify Nexus credentials before pushing
         run: |
-          sleep 5
+          sleep 10
           curl -v -u admin:"$NEXUS_PASS" http://localhost:8082/v2/ 2>&1 | tail -30
 
-        
       - name: Push image to Nexus
         run: |
           docker tag spring-petclinic:latest localhost:8082/spring-petclinic:latest
