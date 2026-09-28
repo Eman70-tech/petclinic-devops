@@ -157,6 +157,6 @@ jobs:
         
       - name: Push image to Nexus
         run: |
-          docker tag petclinic-app:${{ github.sha }} localhost:8082/petclinic-app:latest
+          docker tag spring-petclinic:${{ github.sha }} localhost:8082/spring-petclinic:latest
           echo "$NEXUS_PASS" | docker login localhost:8082 -u admin --password-stdin
-          docker push localhost:8082/petclinic-app:latest
+          docker push localhost:8082/spring-petclinic:latest
