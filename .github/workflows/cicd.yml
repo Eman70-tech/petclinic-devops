@@ -128,7 +128,10 @@ jobs:
 
       - name: Get Nexus admin password
         run: |
-          NEXUS_CONTAINER=$(docker ps -qf "ancestor=sonatype/nexus3:3.70.1")
+          NEXUS_CONTAINER=$(docker ps -qf "ancestor=sonatype/nexus3" | head -n1)
+          if [ -z "$NEXUS_CONTAINER" ]; then
+            echo "Nexus container not found"; docker ps -a; exit 1
+          fi
           NEXUS_PASS=$(docker exec "$NEXUS_CONTAINER" cat /nexus-data/admin.password)
           echo "::add-mask::$NEXUS_PASS"
           echo "NEXUS_PASS=$NEXUS_PASS" >> "$GITHUB_ENV"
