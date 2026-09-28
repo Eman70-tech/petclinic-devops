@@ -53,43 +53,27 @@ jobs:
           NEXUS_INITIAL_PASS=$(docker exec ${{ job.services.nexus.id }} \
             cat /nexus-data/admin.password)
 
-          echo "Initial password file exists."
-
           echo "pass=$NEXUS_INITIAL_PASS" >> "$GITHUB_OUTPUT"
 
-      - name: Verify initial Nexus credentials
+      - name: Verify Nexus admin credentials
         run: |
           curl -fS \
             -u "admin:${{ steps.nexus_init_pass.outputs.pass }}" \
             http://localhost:8081/service/rest/v1/status
 
-      - name: Change Nexus admin password
+      - name: Activate Docker Bearer Token Realm
         run: |
           curl -fS \
             -u "admin:${{ steps.nexus_init_pass.outputs.pass }}" \
             -X PUT \
-            -H "Content-Type: text/plain" \
-            --data "${{ secrets.NEXUS_PASSWORD }}" \
-            http://localhost:8081/service/rest/v1/security/users/admin/change-password
-
-      - name: Verify new Nexus credentials
-        run: |
-          curl -fS \
-            -u "admin:${{ secrets.NEXUS_PASSWORD }}" \
-            http://localhost:8081/service/rest/v1/status
-            - name: Activate Docker Bearer Token Realm
-              run: |
-                curl -fS \
-                  -u "admin:${{ secrets.NEXUS_PASSWORD }}" \
-                  -X PUT \
-                  -H "Content-Type: application/json" \
-                  --data '["NexusAuthenticatingRealm","DockerToken"]' \
-                  http://localhost:8081/service/rest/v1/security/realms/active
+            -H "Content-Type: application/json" \
+            --data '["NexusAuthenticatingRealm","DockerToken"]' \
+            http://localhost:8081/service/rest/v1/security/realms/active
 
       - name: Create Docker hosted repository
         run: |
           curl -fS \
-            -u "admin:${{ secrets.NEXUS_PASSWORD }}" \
+            -u "admin:${{ steps.nexus_init_pass.outputs.pass }}" \
             -X POST \
             -H "Content-Type: application/json" \
             --data '{
@@ -109,22 +93,12 @@ jobs:
             }' \
             http://localhost:8081/service/rest/v1/repositories/docker/hosted
 
-      - name: Verify Docker repository
-        run: |
-          curl -fS \
-            -u "admin:${{ secrets.NEXUS_PASSWORD }}" \
-            http://localhost:8081/service/rest/v1/repositories/docker/hosted/spring-petclinic
-
-      - name: Test Docker endpoint
-        run: |
-          curl -i http://localhost:8081/spring-petclinic/v2/
-           
       - name: Log in to Nexus
         uses: docker/login-action@v3
         with:
           registry: localhost:8081
-          username: ${{ secrets.NEXUS_USERNAME }}
-          password: ${{ secrets.NEXUS_PASSWORD }}
+          username: admin
+          password: ${{ steps.nexus_init_pass.outputs.pass }}
 
       - name: Build Docker Image
         uses: docker/build-push-action@v6
