@@ -109,7 +109,7 @@ jobs:
           load: true
           tags: |
             spring-petclinic:latest
-            localhost:8081/spring-petclinic/spring-petclinic:latest
+            localhost:8082/spring-petclinic:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
           
@@ -127,7 +127,7 @@ jobs:
 
       - name: Get Nexus admin password
         run: |
-          NEXUS_CONTAINER=$(docker ps -qf "ancestor=sonatype/nexus3:3.70.1")
+          NEXUS_CONTAINER=$(docker ps -qf "ancestor=sonatype/nexus3:latest")
           NEXUS_PASS=$(docker exec "$NEXUS_CONTAINER" cat /nexus-data/admin.password)
           echo "::add-mask::$NEXUS_PASS"
           echo "NEXUS_PASS=$NEXUS_PASS" >> "$GITHUB_ENV"
@@ -137,7 +137,7 @@ jobs:
           curl -u admin:"$NEXUS_PASS" -X POST "http://localhost:8081/service/rest/v1/repositories/docker/hosted" \
             -H "Content-Type: application/json" \
             -d '{
-              "name": "docker-hosted",
+              "name": "spring-petclinic",
               "online": true,
               "storage": {"blobStoreName": "default", "strictContentTypeValidation": true, "writePolicy": "allow"},
               "docker": {"v1Enabled": false, "forceBasicAuth": true, "httpPort": 8082}
@@ -156,4 +156,4 @@ jobs:
 
         
       - name: Push image to Nexus
-        run: docker push localhost:8081/spring-petclinic/spring-petclinic:latest
+        run: docker push localhost:8082/spring-petclinic:latest
