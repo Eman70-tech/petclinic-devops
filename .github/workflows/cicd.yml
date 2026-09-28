@@ -106,5 +106,5 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
 
-      - name: Push image to Nexus
-        run: docker push localhost:8081/spring-petclinic/spring-petclinic:latest
+     # - name: Push image to Nexus
+      #  run: docker push localhost:8081/spring-petclinic/spring-petclinic:latest
