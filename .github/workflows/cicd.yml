@@ -125,7 +125,7 @@ jobs:
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
-- name: Get Nexus admin password
+      - name: Get Nexus admin password
         run: |
           NEXUS_CONTAINER=$(docker ps -qf "ancestor=sonatype/nexus3:latest")
           NEXUS_PASS=$(docker exec "$NEXUS_CONTAINER" cat /nexus-data/admin.password | tr -d '\r\n')
