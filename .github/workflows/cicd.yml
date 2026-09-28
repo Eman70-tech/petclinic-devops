@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       nexus:
-        image: sonatype/nexus3:latest
+        image: sonatype/nexus3:3.70.1
         ports:
           - 8081:8081
           - 8082:8082
@@ -138,26 +138,32 @@ jobs:
 
       - name: Create Docker hosted repository in Nexus
         run: |
-          curl -u admin:"$NEXUS_PASS" -X POST "http://localhost:8081/service/rest/v1/repositories/docker/hosted" \
+          HTTP=$(curl -s -o resp.txt -w "%{http_code}" -u admin:"$NEXUS_PASS" \
+            -X POST "http://localhost:8081/service/rest/v1/repositories/docker/hosted" \
             -H "Content-Type: application/json" \
             -d '{
               "name": "docker-hosted",
               "online": true,
               "storage": {"blobStoreName": "default", "strictContentTypeValidation": true, "writePolicy": "allow"},
               "docker": {"v1Enabled": false, "forceBasicAuth": true, "httpPort": 8082}
-            }'
+            }')
+          echo "HTTP $HTTP"; cat resp.txt
+          [ "$HTTP" = "201" ] || exit 1
 
       - name: Enable Docker Bearer Token Realm
         run: |
-          curl -i -u admin:"$NEXUS_PASS" -X PUT "http://localhost:8081/service/rest/v1/security/realms/active" \
+          HTTP=$(curl -s -o resp.txt -w "%{http_code}" -u admin:"$NEXUS_PASS" \
+            -X PUT "http://localhost:8081/service/rest/v1/security/realms/active" \
             -H "Content-Type: application/json" \
-            -d '["NexusAuthenticatingRealm", "DockerToken"]'
+            -d '["NexusAuthenticatingRealm", "DockerToken"]')
+          echo "HTTP $HTTP"; cat resp.txt
+          [ "$HTTP" = "204" ] || exit 1
 
       - name: Verify Nexus credentials before pushing
         run: |
           sleep 5
-          curl -v -u admin:"$NEXUS_PASS" http://localhost:8082/v2/ 2>&1 | tail -30
-
+          curl -s -o /dev/null -w "registry /v2/ -> %{http_code}\n" \
+            -u admin:"$NEXUS_PASS" http://localhost:8082/v2/
       - name: Push image to Nexus
         run: |
           docker tag petclinic-app:${{ github.sha }} localhost:8082/petclinic-app:latest
