@@ -77,25 +77,32 @@ jobs:
             -Dsonar.host.url=http://localhost:9000 \
             -Dsonar.token="$SONAR_TOKEN" \
             -Dsonar.projectKey=spring-petclinic
+            
 
       - name: Show SonarQube results
         run: |
           CE_URL=$(grep ceTaskUrl target/sonar/report-task.txt | cut -d= -f2-)
+          CE_STATUS=""
           for i in $(seq 1 30); do
             CE_STATUS=$(curl -s -u "$SONAR_TOKEN:" "$CE_URL" | jq -r '.task.status')
             [ "$CE_STATUS" = "SUCCESS" ] && break
             sleep 5
           done
-
-          echo "=== Quality Gate ==="
-          curl -s -u "$SONAR_TOKEN:" \
-            "http://localhost:9000/api/qualitygates/project_status?projectKey=spring-petclinic" \
-            | jq '.projectStatus'
+          [ "$CE_STATUS" = "SUCCESS" ] || { echo "Sonar analysis task did not finish"; exit 1; }
 
           echo "=== Measures ==="
           curl -s -u "$SONAR_TOKEN:" \
             "http://localhost:9000/api/measures/component?component=spring-petclinic&metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density" \
             | jq '.component.measures'
+
+          echo "=== Quality Gate ==="
+          GATE_JSON=$(curl -s -u "$SONAR_TOKEN:" \
+            "http://localhost:9000/api/qualitygates/project_status?projectKey=spring-petclinic")
+          echo "$GATE_JSON" | jq '.projectStatus'
+
+          GATE_STATUS=$(echo "$GATE_JSON" | jq -r '.projectStatus.status')
+          echo "GATE_STATUS=$GATE_STATUS"
+          [ "$GATE_STATUS" = "OK" ] || { echo "Quality gate failed: $GATE_STATUS"; exit 1; }
 #================================================================================================================#
 
       - name: Set up Docker Buildx
@@ -120,7 +127,7 @@ jobs:
         with:
           image-ref: 'spring-petclinic:latest'
           format: 'table'
-          exit-code: '0'
+          exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
