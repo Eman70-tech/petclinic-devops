@@ -53,33 +53,38 @@ jobs:
           NEXUS_INITIAL_PASS=$(docker exec ${{ job.services.nexus.id }} \
             cat /nexus-data/admin.password)
 
-          echo "pass=$NEXUS_INITIAL_PASS" >> "$GITHUB_OUTPUT"
-
-      - name: Verify initial Nexus password
-        run: |
-          NEXUS_INITIAL_PASS=$(docker exec ${{ job.services.nexus.id }} \
-            cat /nexus-data/admin.password)
-
           echo "Initial password file exists."
 
-          curl -fS \
-            -u "admin:${NEXUS_INITIAL_PASS}" \
-            http://localhost:8081/service/rest/v1/status
+          echo "pass=$NEXUS_INITIAL_PASS" >> "$GITHUB_OUTPUT"
 
-      - name: Verify Nexus admin credentials
+      - name: Verify initial Nexus credentials
         run: |
           curl -fS \
-            -u "admin:${{ secrets.NEXUS_PASSWORD }}" \
+            -u "admin:${{ steps.nexus_init_pass.outputs.pass }}" \
             http://localhost:8081/service/rest/v1/status
 
-      - name: Activate Docker Bearer Token Realm
+      - name: Change Nexus admin password
         run: |
           curl -fS \
-            -u "admin:${{ secrets.NEXUS_PASSWORD }}" \
+            -u "admin:${{ steps.nexus_init_pass.outputs.pass }}" \
             -X PUT \
-            -H "Content-Type: application/json" \
-            --data '["NexusAuthenticatingRealm","DockerToken"]' \
-            http://localhost:8081/service/rest/v1/security/realms/active
+            -H "Content-Type: text/plain" \
+            --data "${{ secrets.NEXUS_PASSWORD }}" \
+            http://localhost:8081/service/rest/v1/security/users/admin/change-password
+
+      - name: Verify new Nexus credentials
+        run: |
+          curl -fS \
+            -u "admin:${{ secrets.NEXUS_PASSWORD }}" \
+            http://localhost:8081/service/rest/v1/status
+            - name: Activate Docker Bearer Token Realm
+              run: |
+                curl -fS \
+                  -u "admin:${{ secrets.NEXUS_PASSWORD }}" \
+                  -X PUT \
+                  -H "Content-Type: application/json" \
+                  --data '["NexusAuthenticatingRealm","DockerToken"]' \
+                  http://localhost:8081/service/rest/v1/security/realms/active
 
       - name: Create Docker hosted repository
         run: |
