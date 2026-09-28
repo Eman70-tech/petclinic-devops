@@ -125,25 +125,20 @@ jobs:
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
+
       - name: Get Nexus admin password
         run: |
-          NEXUS_CONTAINER=$(docker ps -qf "ancestor=sonatype/nexus3:latest")
-          NEXUS_PASS=$(docker exec "$NEXUS_CONTAINER" cat /nexus-data/admin.password | tr -d '\r\n')
+          NEXUS_CONTAINER=$(docker ps -qf "ancestor=sonatype/nexus3:3.70.1")
+          NEXUS_PASS=$(docker exec "$NEXUS_CONTAINER" cat /nexus-data/admin.password)
           echo "::add-mask::$NEXUS_PASS"
           echo "NEXUS_PASS=$NEXUS_PASS" >> "$GITHUB_ENV"
-
-      - name: Disable Anonymous Access in Nexus
-        run: |
-          curl -u admin:"$NEXUS_PASS" -X PUT "http://localhost:8081/service/rest/v1/security/anonymous" \
-            -H "Content-Type: application/json" \
-            -d '{"enabled": false, "userId": "anonymous", "realmName": "NexusAuthorizingRealm"}'
 
       - name: Create Docker hosted repository in Nexus
         run: |
           curl -u admin:"$NEXUS_PASS" -X POST "http://localhost:8081/service/rest/v1/repositories/docker/hosted" \
             -H "Content-Type: application/json" \
             -d '{
-              "name": "spring-petclinic",
+              "name": "docker-hosted",
               "online": true,
               "storage": {"blobStoreName": "default", "strictContentTypeValidation": true, "writePolicy": "allow"},
               "docker": {"v1Enabled": false, "forceBasicAuth": true, "httpPort": 8082}
@@ -153,15 +148,15 @@ jobs:
         run: |
           curl -i -u admin:"$NEXUS_PASS" -X PUT "http://localhost:8081/service/rest/v1/security/realms/active" \
             -H "Content-Type: application/json" \
-            -d '["NexusAuthenticatingRealm", "NexusAuthorizingRealm", "DockerToken"]'
+            -d '["NexusAuthenticatingRealm", "DockerToken"]'
 
       - name: Verify Nexus credentials before pushing
         run: |
-          sleep 10
+          sleep 5
           curl -v -u admin:"$NEXUS_PASS" http://localhost:8082/v2/ 2>&1 | tail -30
 
       - name: Push image to Nexus
         run: |
-          docker tag spring-petclinic:latest localhost:8082/spring-petclinic:latest
+          docker tag petclinic-app:${{ github.sha }} localhost:8082/petclinic-app:latest
           echo "$NEXUS_PASS" | docker login localhost:8082 -u admin --password-stdin
-          docker push localhost:8082/spring-petclinic:latest
+          docker push localhost:8082/petclinic-app:latest
