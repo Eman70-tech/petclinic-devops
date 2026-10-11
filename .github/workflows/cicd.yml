@@ -54,7 +54,7 @@ jobs:
       - name: Build with Maven Wrapper
         run: ./mvnw -B verify -Dtest=!PostgresIntegrationTests
       
-      
+
       - name: Wait for SonarQube and create token
         run: |
           for i in $(seq 1 60); do
@@ -116,7 +116,7 @@ jobs:
           load: true
           tags: |
             spring-petclinic:latest
-            localhost:8082/petclinic-app:${{ github.sha }}
+            petclinic-app:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           
